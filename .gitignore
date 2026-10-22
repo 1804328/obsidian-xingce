@@ -1,0 +1,9 @@
+node_modules/
+main.js
+*.js.map
+.DS_Store
+data.json
+bank-cache.json
+bank-index.json
+scripts/.*.bundle.mjs
+scripts/.obsidian-stub.mjs

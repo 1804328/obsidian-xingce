@@ -1,0 +1,10 @@
+{
+  "id": "obsidian-xingce",
+  "name": "行测刷题",
+  "version": "0.1.0",
+  "minAppVersion": "1.5.0",
+  "description": "在 Obsidian 里刷行测真题：随机抽题、考点专项、整卷模考、错题本。",
+  "author": "",
+  "authorUrl": "",
+  "isDesktopOnly": false
+}
