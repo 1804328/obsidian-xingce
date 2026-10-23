@@ -56,6 +56,7 @@ await writeFile(
 	[
 		'export { Bank } from "../src/bank";',
 		'export { buildWeakness } from "../src/weakness";',
+		'export { convertInput } from "../src/importer";',
 		'export { TFile } from "obsidian";',
 		"",
 	].join("\n")
@@ -71,7 +72,7 @@ await esbuild.build({
 	outfile: bundle,
 });
 
-const { Bank, TFile, buildWeakness } = await import(pathToFileURL(bundle).href);
+const { Bank, TFile, buildWeakness, convertInput } = await import(pathToFileURL(bundle).href);
 
 const paths = await walk(root);
 const contents = new Map();
@@ -269,6 +270,46 @@ check("个人错更多 → 权重更高", w.weightOf("a1") > w.weightOf("a2"), `
 const hist3 = Array.from({ length: 100 }, () => mkHist("a1", false));
 w = buildWeakness(mockEntries, hist3);
 check("权重不超过上限", w.weightOf("a1") <= 8, `got ${w.weightOf("a1")}`);
+
+console.log("\n=== 题库导入器（convertInput） ===");
+const SAMPLE_CSV = [
+	"模块,试卷,地区,年份,考点,材料,题干,选项A,选项B,选项C,选项D,答案,解析",
+	"常识判断,导入测试卷,示例,2026,地理,,下列说法正确的是？,地球是平的,地球是球体,太阳绕地球转,月球是恒星,B,（解析占位）",
+	"常识判断,导入测试卷,示例,2026,地理,,下列说法错误的是？,水在0度结冰,鱼用肺呼吸,鸟会飞,蜂会酿蜜,B,（解析占位）",
+	"资料分析,导入测试卷,示例,2026,增长率,<p>2025 年营收 120000 亿，增长 8%</p>,2024 年营收约多少？,111111 亿,105000 亿,96000 亿,130000 亿,A,（解析占位）",
+].join("\n");
+
+let imp = convertInput(SAMPLE_CSV, "test.csv");
+check("CSV 解析出 3 题", imp.total === 3, `got ${imp.total}`);
+check("生成 2 篇笔记（2 个模块）", imp.notes.length === 2, `got ${imp.notes.length}`);
+check("资料分析归入资料分析模块", imp.byModule["资料分析"] === 1, JSON.stringify(imp.byModule));
+check("笔记含 frontmatter 模块字段", imp.notes[0].content.includes("模块:"), imp.notes[0].path);
+check("笔记题目含 ✅ 标记答案", /-\s*\*\*B\*\*\..*✅/.test(imp.notes[0].content));
+
+// 资料分析：材料整组抽取
+const zl = imp.notes.find((n) => n.path.includes("资料分析"));
+check("资料分析笔记含「材料 1」", zl.content.includes("## 材料 1"));
+check("资料分析笔记含「### 第 1 题」", zl.content.includes("### 第 1 题"));
+
+// JSON 输入
+const SAMPLE_JSON = JSON.stringify([
+	{ 模块: "判断推理", 试卷: "JSON卷", 题干: "1+1=？", 选项A: "1", 选项B: "2", 答案: "B", 解析: "x" },
+]);
+imp = convertInput(SAMPLE_JSON, "test.json");
+check("JSON 解析出 1 题", imp.total === 1, `got ${imp.total}`);
+check("JSON 笔记路径含模块目录", imp.notes[0].path.startsWith("判断推理/"), imp.notes[0].path);
+
+// 缺题干应报错且无笔记
+imp = convertInput("模块,试卷\n政治,卷一", "bad.csv");
+check("缺题干列 → 无笔记、有报错", imp.notes.length === 0 && imp.warnings.some((x) => x.includes("题干")), JSON.stringify(imp.warnings));
+
+// 别名宽松匹配：用 question / A / correct 列名
+const ALIAS_CSV = [
+	"question,type,A,B,correct",
+	"测试题,言语,对,错,A",
+].join("\n");
+imp = convertInput(ALIAS_CSV, "alias.csv");
+check("列名别名（question/type/A/correct）可识别", imp.total === 1 && imp.byModule["言语"] === 1, JSON.stringify(imp.byModule));
 
 await rm(bundle, { force: true });
 await rm(stub, { force: true });

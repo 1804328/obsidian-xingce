@@ -162,6 +162,13 @@ await writeFile(
 		"  display() {}",
 		"  hide() {}",
 		"}",
+		"export class Modal {",
+		"  constructor(app) { this.app = app; this.contentEl = document.createElement('div'); }",
+		"  open() { Modal.last = this; }",
+		"  close() { this.contentEl.empty?.(); }",
+		"  onOpen() {}",
+		"  onClose() {}",
+		"}",
 		"export class Setting {",
 		"  constructor(el) { this.settingEl = el; }",
 		"  setName() { return this; }",
@@ -214,6 +221,7 @@ await writeFile(
 		'export { default as XingcePlugin } from "../src/main";',
 		'export { PracticeView } from "../src/views/practice-view";',
 		'export { ExamView } from "../src/views/exam-view";',
+		'export { ImportModal } from "../src/views/import-modal";',
 		'export { TFile } from "obsidian";',
 		"",
 	].join("\n")
@@ -239,7 +247,7 @@ await esbuild.build({
 	outfile: renderBundle,
 });
 
-const { XingcePlugin, PracticeView, ExamView, TFile } = await import(
+const { XingcePlugin, PracticeView, ExamView, ImportModal, TFile } = await import(
 	pathToFileURL(bundle).href
 );
 
@@ -585,6 +593,32 @@ try {
 } catch (e) {
 	check("模考视图 onOpen 不抛异常", false, e.message);
 	console.error(e);
+}
+
+console.log("\n=== 导入弹窗 ===");
+try {
+	const modal = new ImportModal(app, plugin);
+	modal.text =
+		"模块,试卷,题干,选项A,选项B,答案,解析\n常识判断,导入测试,下列说法正确的是？,错,对,B,（x）";
+	modal.filename = "ui-test.csv";
+	modal.onOpen();
+	const previewBtn = modal.contentEl.querySelector(".mod-cta");
+	check("导入弹窗渲染出预览按钮", !!previewBtn);
+	previewBtn?.dispatchEvent(new window.Event("click"));
+	const previewText = modal.contentEl.querySelector(".xc-import-preview")?.textContent || "";
+	check("预览显示笔记统计", /将生成/.test(previewText), previewText.slice(0, 40));
+	check("预览显示模块分布标签", /常识判断/.test(previewText), previewText.slice(0, 40));
+
+	// 缺题干应显示错误提示
+	const modal2 = new ImportModal(app, plugin);
+	modal2.text = "模块,试卷\n政治,卷一";
+	modal2.filename = "bad.csv";
+	modal2.onOpen();
+	modal2.contentEl.querySelector(".mod-cta")?.dispatchEvent(new window.Event("click"));
+	const errText = modal2.contentEl.querySelector(".xc-import-preview")?.textContent || "";
+	check("缺题干列 → 预览报错", /解析失败|题干/.test(errText), errText.slice(0, 40));
+} catch (e) {
+	check("导入弹窗测试不抛异常", false, e.message);
 }
 
 // ---------------------------------------------------------------

@@ -108,6 +108,13 @@ export class PluginSettingTab {
   display() {}
   hide() {}
 }
+export class Modal {
+  constructor(app) { this.app = app; this.contentEl = document.createElement("div"); }
+  open() { Modal.last = this; }
+  close() { if (this.contentEl && this.contentEl.empty) this.contentEl.empty(); }
+  onOpen() {}
+  onClose() {}
+}
 export class Setting {
   constructor(el) { this.settingEl = el; }
   setName() { return this; }
@@ -217,6 +224,11 @@ await writeFile(
 		)};`,
 		`export { Bank } from ${JSON.stringify(
 			path.join(projectRoot, "src", "bank.ts").replace(/\\/g, "/")
+		)};`,
+		`export { ImportModal } from ${JSON.stringify(
+			path
+				.join(projectRoot, "src", "views", "import-modal.ts")
+				.replace(/\\/g, "/")
 		)};`,
 		// 关键：把桩里的 TFile 一并导出，供 harness 复用同一个类。
 		// 否则 bundle 内的 stub 副本与 harness 各持一份 TFile，
@@ -378,61 +390,77 @@ for (const P of [HTMLElement.prototype, DocumentFragment.prototype]) {
 
   const host = document.getElementById("xc-host");
 
-  // 不走 activatePracticeView()：那里依赖 workspace.getRightLeaf()，
-  // 桩里没有真实 leaf。registerView 存的是工厂函数，直接调用即可。
-  const VIEW_TYPE = ${JSON.stringify(viewType)};
-  const factory = plugin.views.get(VIEW_TYPE);
-  if (!factory) throw new Error("视图未注册：" + VIEW_TYPE);
-  const leaf = { app, view: null, setViewState: async () => {} };
-  const view = factory(leaf);
-  leaf.view = view;
-  host.appendChild(view.contentEl);
-  await view.onOpen();
-  await new Promise((r) => setTimeout(r, 300));
-
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-
+  let view = null;
   let drawDiag = null;
-  try {
-    const r = await plugin.bank.draw(plugin.filterState, 3);
-    drawDiag = "len=" + r.length + " first=" + (r[0] ? r[0].uid : "none");
-  } catch (e) { drawDiag = "ERR " + e.message; }
 
-  if (VIEW_TYPE === "xingce-practice-view") {
-    if (process.env.XC_SETUP === "1") {
-      // 仅渲染筛选 / 设置界面（含智能 / 随机模式切换），不进入答题态
-      await wait(600);
-    } else {
-      await view.quickDraw(3);
-      // quickDraw 内部不 await 异步 render，这里轮询等 DOM 出现
-      for (let i = 0; i < 50; i++) {
-        if (host.querySelector(".xc-option")) break;
-        await wait(200);
-      }
-      const q = view.session && view.session.questions[view.session.idx];
-      // 先尝试真实点击答题（单选题点选项即判分，多选题需再点提交）
-      const opt = host.querySelector(".xc-option");
-      if (opt) opt.click();
-      await wait(400);
-      const sub = host.querySelector(".xc-submit-bar .xc-btn-primary");
-      if (sub && !sub.disabled) sub.click();
-      await wait(400);
-      // 兜底：harness 场景下若点击未触发判分反馈，直接驱动内部判分
-      if (!host.querySelector(".xc-verdict") && q && typeof view.commit === "function") {
-        const wrongOpt = q.options.find(
-          (o) => !(q.correctKeys || []).includes(o.key)
-        );
-        view.commit(q, wrongOpt ? [wrongOpt.key] : ["X"]);
-        await view.render();
-      }
-      // 轮询等待判分反馈渲染完成，确保截图包含解析
-      for (let i = 0; i < 30; i++) {
-        if (host.querySelector(".xc-verdict")) break;
-        await wait(200);
-      }
-    }
+  if (process.env.XC_IMPORT === "1") {
+    // 导入弹窗模式：填好示例 CSV → 打开弹窗 → 点预览，展示统计
+    const modal = new B.ImportModal(app, plugin);
+    modal.text = [
+      "模块,试卷,地区,年份,考点,材料,题干,选项A,选项B,选项C,选项D,答案,解析",
+      "常识判断,示例卷,示例,2026,地理,,下列说法正确的是？,地球是平的,地球是球体,太阳绕地球转,月球是恒星,B,（解析占位）",
+      "资料分析,示例卷,示例,2026,增长率,<p>2025 年营收 120000 亿，增长 8%</p>,2024 年营收约多少？,111111 亿,105000 亿,96000 亿,130000 亿,A,（解析占位）",
+    ].join("\\n");
+    modal.filename = "我的题库.csv";
+    modal.onOpen();
+    host.appendChild(modal.contentEl);
+    const pv = modal.contentEl.querySelector(".mod-cta");
+    if (pv) pv.click();
+    await wait(500);
+    view = { session: null, contentEl: modal.contentEl };
   } else {
-    await wait(600);
+    // 不走 activatePracticeView()：那里依赖 workspace.getRightLeaf()，
+    // 桩里没有真实 leaf。registerView 存的是工厂函数，直接调用即可。
+    const VIEW_TYPE = ${JSON.stringify(viewType)};
+    const factory = plugin.views.get(VIEW_TYPE);
+    if (!factory) throw new Error("视图未注册：" + VIEW_TYPE);
+    const leaf = { app, view: null, setViewState: async () => {} };
+    view = factory(leaf);
+    leaf.view = view;
+    host.appendChild(view.contentEl);
+    await view.onOpen();
+    await wait(300);
+
+    drawDiag = null;
+    try {
+      const r = await plugin.bank.draw(plugin.filterState, 3);
+      drawDiag = "len=" + r.length + " first=" + (r[0] ? r[0].uid : "none");
+    } catch (e) { drawDiag = "ERR " + e.message; }
+
+    if (VIEW_TYPE === "xingce-practice-view") {
+      if (process.env.XC_SETUP === "1") {
+        // 仅渲染筛选 / 设置界面（含智能 / 随机模式切换），不进入答题态
+        await wait(600);
+      } else {
+        await view.quickDraw(3);
+        // quickDraw 内部不 await 异步 render，这里轮询等 DOM 出现
+        for (let i = 0; i < 50; i++) {
+          if (host.querySelector(".xc-option")) break;
+          await wait(200);
+        }
+        const q = view.session && view.session.questions[view.session.idx];
+        const opt = host.querySelector(".xc-option");
+        if (opt) opt.click();
+        await wait(400);
+        const sub = host.querySelector(".xc-submit-bar .xc-btn-primary");
+        if (sub && !sub.disabled) sub.click();
+        await wait(400);
+        if (!host.querySelector(".xc-verdict") && q && typeof view.commit === "function") {
+          const wrongOpt = q.options.find(
+            (o) => !(q.correctKeys || []).includes(o.key)
+          );
+          view.commit(q, wrongOpt ? [wrongOpt.key] : ["X"]);
+          await view.render();
+        }
+        for (let i = 0; i < 30; i++) {
+          if (host.querySelector(".xc-verdict")) break;
+          await wait(200);
+        }
+      }
+    } else {
+      await wait(600);
+    }
   }
 
   window.__XC_DIAG = {

@@ -502,3 +502,67 @@
 	color: #fff !important;
 	border-color: transparent !important;
 }
+
+/* ===== 导入弹窗 ===== */
+.xc-import-modal {
+	max-width: 640px;
+}
+.xc-import-hint {
+	color: var(--text-muted);
+	font-size: 0.82em;
+	line-height: 1.6;
+	margin: 4px 0 12px;
+}
+.xc-import-file {
+	display: block;
+	width: 100%;
+	margin-bottom: 10px;
+}
+.xc-import-or {
+	text-align: center;
+	color: var(--text-faint);
+	font-size: 0.78em;
+	margin: 8px 0;
+}
+.xc-import-textarea {
+	width: 100%;
+	min-height: 140px;
+	resize: vertical;
+	font-family: var(--font-monospace);
+	font-size: 0.8em;
+}
+.xc-import-preview {
+	margin: 12px 0;
+	min-height: 40px;
+	border: 1px dashed var(--background-modifier-border);
+	border-radius: 6px;
+	padding: 10px;
+}
+.xc-import-stat {
+	font-weight: 600;
+	margin-bottom: 6px;
+}
+.xc-import-modules {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+	margin-bottom: 6px;
+}
+.xc-import-actions {
+	display: flex;
+	gap: 8px;
+	justify-content: flex-end;
+}
+.xc-muted {
+	color: var(--text-faint);
+	font-size: 0.85em;
+}
+.xc-warn {
+	color: var(--color-orange, #e8743b);
+	font-size: 0.8em;
+	line-height: 1.5;
+}
+.xc-err {
+	color: var(--color-red, #e2554f);
+	font-size: 0.85em;
+}

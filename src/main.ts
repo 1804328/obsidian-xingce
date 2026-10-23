@@ -4,6 +4,7 @@ import { Store } from "./store";
 import { PracticeView, VIEW_TYPE_PRACTICE } from "./views/practice-view";
 import { ExamView, VIEW_TYPE_EXAM } from "./views/exam-view";
 import { StatsView, VIEW_TYPE_STATS } from "./views/stats-view";
+import { ImportModal } from "./views/import-modal";
 import { XingceSettingTab } from "./settings";
 import type { FilterState } from "./types";
 
@@ -81,6 +82,14 @@ export default class XingcePlugin extends Plugin {
 			id: "xingce-rebuild-index",
 			name: "重建题库索引",
 			callback: () => void this.rebuild(),
+		});
+
+		this.addCommand({
+			id: "xingce-import",
+			name: "导入我的题库（CSV / JSON）",
+			callback: () => {
+				new ImportModal(this.app, this).open();
+			},
 		});
 
 		this.addSettingTab(new XingceSettingTab(this.app, this));
