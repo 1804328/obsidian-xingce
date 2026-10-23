@@ -3,6 +3,7 @@ import { Bank } from "./bank";
 import { Store } from "./store";
 import { PracticeView, VIEW_TYPE_PRACTICE } from "./views/practice-view";
 import { ExamView, VIEW_TYPE_EXAM } from "./views/exam-view";
+import { StatsView, VIEW_TYPE_STATS } from "./views/stats-view";
 import { XingceSettingTab } from "./settings";
 import type { FilterState } from "./types";
 
@@ -37,6 +38,11 @@ export default class XingcePlugin extends Plugin {
 			(leaf) => new ExamView(leaf, this)
 		);
 
+		this.registerView(
+			VIEW_TYPE_STATS,
+			(leaf) => new StatsView(leaf, this)
+		);
+
 		this.addRibbonIcon("pen-line", "行测刷题", () => {
 			void this.activateView();
 		});
@@ -63,6 +69,12 @@ export default class XingcePlugin extends Plugin {
 			id: "xingce-exam",
 			name: "打开整卷模考",
 			callback: () => void this.activateExamView(),
+		});
+
+		this.addCommand({
+			id: "xingce-stats",
+			name: "打开刷题数据看板",
+			callback: () => void this.activateStatsView(),
 		});
 
 		this.addCommand({
@@ -112,6 +124,24 @@ export default class XingcePlugin extends Plugin {
 
 		if (leaf) workspace.revealLeaf(leaf);
 		return (leaf?.view as ExamView) ?? null;
+	}
+
+	async activateStatsView(): Promise<StatsView | null> {
+		const { workspace } = this.app;
+		let leaf: WorkspaceLeaf | null =
+			workspace.getLeavesOfType(VIEW_TYPE_STATS)[0] ?? null;
+
+		if (!leaf) {
+			leaf = workspace.getRightLeaf(false);
+			if (leaf)
+				await leaf.setViewState({
+					type: VIEW_TYPE_STATS,
+					active: true,
+				});
+		}
+
+		if (leaf) workspace.revealLeaf(leaf);
+		return (leaf?.view as StatsView) ?? null;
 	}
 
 	async ensureBank(

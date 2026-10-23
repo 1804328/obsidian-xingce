@@ -1,0 +1,31 @@
+name: 💡 功能建议
+description: 想加什么能力、想怎么改进
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: 想解决的问题
+      description: 现在哪里不方便？你的使用场景是什么？
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: 你的想法
+      description: 希望插件怎么做
+    validations:
+      required: false
+  - type: dropdown
+    id: area
+    attributes:
+      label: 涉及模块
+      options:
+        - 刷题（随机/考点/年份/地区）
+        - 整卷模考
+        - 错题本
+        - 数据看板
+        - 题库导入
+        - 其他
+    validations:
+      required: false

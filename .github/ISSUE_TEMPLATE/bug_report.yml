@@ -1,0 +1,37 @@
+name: 🐛 Bug 反馈
+description: 插件使用过程中遇到的问题
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        谢谢反馈！请尽量填完整，能帮我们更快定位。
+  - type: input
+    id: env
+    attributes:
+      label: 环境
+      description: Obsidian 版本、操作系统、插件版本
+      placeholder: "Obsidian 1.14.4 / Windows 11 / 插件 0.1.0"
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: 发生了什么
+      description: 期望的行为 vs 实际的行为
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: 复现步骤
+      description: 一步步怎么操作能稳定触发
+    validations:
+      required: false
+  - type: textarea
+    id: extra
+    attributes:
+      label: 截图 / 日志 / 题库片段
+      description: 任何能帮定位的信息（注意隐去个人隐私）
+    validations:
+      required: false

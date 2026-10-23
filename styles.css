@@ -365,3 +365,123 @@
 	margin-bottom: 12px;
 	line-height: 1.6;
 }
+
+/* 数据看板 */
+.xc-stats-overview {
+	display: grid;
+	grid-template-columns: repeat(3, 1fr);
+	gap: 8px;
+	margin: 4px 0 18px;
+}
+.xc-stat-card {
+	background: var(--background-secondary);
+	border-radius: 8px;
+	padding: 12px 8px;
+	text-align: center;
+}
+.xc-stat-card-v {
+	font-size: 1.5em;
+	font-weight: 700;
+	color: var(--text-normal);
+}
+.xc-stat-card-t {
+	font-size: 0.78em;
+	color: var(--text-muted);
+	margin-top: 2px;
+}
+.xc-stat-card-s {
+	font-size: 0.7em;
+	color: var(--text-faint);
+	margin-top: 4px;
+}
+.xc-stats-section {
+	margin: 14px 0;
+}
+.xc-stats-h {
+	font-weight: 600;
+	margin-bottom: 10px;
+}
+.xc-stat-row {
+	display: grid;
+	grid-template-columns: 88px 1fr 84px;
+	align-items: center;
+	gap: 8px;
+	margin-bottom: 8px;
+	font-size: 0.85em;
+}
+.xc-stat-name {
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+.xc-stat-bar {
+	height: 8px;
+	background: var(--background-modifier-border);
+	border-radius: 999px;
+	overflow: hidden;
+}
+.xc-stat-bar-fill {
+	height: 100%;
+	background: var(--text-muted);
+	border-radius: 999px;
+	transition: width 0.2s;
+}
+.xc-stat-val {
+	text-align: right;
+	color: var(--text-muted);
+}
+.xc-stat-bar-fill.is-good {
+	background: var(--color-green);
+}
+.xc-stat-bar-fill.is-mid {
+	background: #d9a441;
+}
+.xc-stat-bar-fill.is-bad {
+	background: var(--color-red);
+}
+.xc-trend {
+	display: flex;
+	align-items: flex-end;
+	gap: 6px;
+	height: 120px;
+	padding: 8px 0 4px;
+}
+.xc-trend-col {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: flex-end;
+	gap: 4px;
+	height: 100%;
+}
+.xc-trend-bar {
+	width: 70%;
+	border-radius: 4px 4px 0 0;
+	background: var(--text-muted);
+	min-height: 2px;
+	transition: height 0.2s;
+}
+.xc-trend-bar.is-good {
+	background: var(--color-green);
+}
+.xc-trend-bar.is-mid {
+	background: #d9a441;
+}
+.xc-trend-bar.is-bad {
+	background: var(--color-red);
+}
+.xc-trend-bar.is-empty {
+	background: var(--background-modifier-border);
+}
+.xc-trend-rate {
+	font-size: 0.68em;
+	color: var(--text-muted);
+}
+.xc-trend-label {
+	font-size: 0.68em;
+	color: var(--text-faint);
+}
+.xc-stats-foot {
+	margin-top: 16px;
+}
