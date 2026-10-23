@@ -1,6 +1,7 @@
 import { ItemView, MarkdownRenderer, Notice, WorkspaceLeaf } from "obsidian";
 import type { Question } from "../types";
 import { toMarkdown } from "../render";
+import { buildWeakness } from "../weakness";
 import type XingcePlugin from "../main";
 
 export const VIEW_TYPE_PRACTICE = "xingce-practice-view";
@@ -17,6 +18,9 @@ export class PracticeView extends ItemView {
 	private plugin: XingcePlugin;
 	private session: Session | null = null;
 	private source: "all" | "wrong" | "favorite" = "all";
+	private smart = true;
+	private weakModules = new Set<string>();
+	private weakQids = new Set<string>();
 	private loading = false;
 	private progress = { done: 0, total: 0 };
 	private pending: string[] = [];
@@ -43,6 +47,7 @@ export class PracticeView extends ItemView {
 			this.progress = { done: d, total: t };
 			this.renderLoading();
 		});
+		this.smart = this.plugin.store.data.settings.smartMode;
 		this.render();
 	}
 
@@ -102,6 +107,25 @@ export class PracticeView extends ItemView {
 		const facets = this.plugin.bank.facets();
 		const f = this.filter;
 		const store = this.plugin.store;
+
+		// 智能 / 随机 模式切换
+		const modeRow = el.createDiv({ cls: "xc-mode-row" });
+		const smartBtn = modeRow.createEl("button", {
+			cls: `xc-chip${this.smart ? " is-on" : ""}`,
+			text: "🎯 智能模式",
+		});
+		const randBtn = modeRow.createEl("button", {
+			cls: `xc-chip${!this.smart ? " is-on" : ""}`,
+			text: "随机模式",
+		});
+		smartBtn.onclick = () => this.setSmart(true);
+		randBtn.onclick = () => this.setSmart(false);
+		el.createDiv({
+			cls: "xc-mode-hint",
+			text: this.smart
+				? "智能模式：优先推送你的薄弱模块与个人易错题"
+				: "随机模式：所有匹配题目均匀抽取",
+		});
 
 		this.chipRow(
 			el,
@@ -221,6 +245,13 @@ export class PracticeView extends ItemView {
 		else arr.push(v);
 	}
 
+	private setSmart(v: boolean): void {
+		this.smart = v;
+		this.plugin.store.data.settings.smartMode = v;
+		void this.plugin.store.save();
+		this.render();
+	}
+
 	private chipRow(
 		parent: HTMLElement,
 		label: string,
@@ -265,11 +296,18 @@ export class PracticeView extends ItemView {
 		this.renderLoading();
 
 		const store = this.plugin.store;
+		const wk = buildWeakness(this.plugin.bank.all(), store.data.history, {
+			smart: this.smart,
+		});
+		this.weakModules = new Set(wk.weakModules);
+		this.weakQids = new Set(Object.keys(store.data.wrong));
 		let qs: Question[];
 		if (this.source === "wrong") {
-			qs = await this.plugin.bank.pickByQids(store.wrongList(), n);
+			qs = await this.plugin.bank.pickByQids(store.wrongList(), n, wk.weightOf);
 		} else if (this.source === "favorite") {
-			qs = await this.plugin.bank.pickByQids(store.data.favorite, n);
+			qs = await this.plugin.bank.pickByQids(store.data.favorite, n, wk.weightOf);
+		} else if (this.smart) {
+			qs = await this.plugin.bank.drawSmart(this.filter, n, wk.weightOf);
 		} else {
 			qs = await this.plugin.bank.draw(this.filter, n);
 		}
@@ -309,6 +347,8 @@ export class PracticeView extends ItemView {
 			text: `第 ${s.idx + 1} / ${s.questions.length} 题`,
 		});
 		const tag = bar.createDiv({ cls: "xc-tags" });
+		if (this.smart && (this.weakModules.has(q.module) || this.weakQids.has(q.qid)))
+			tag.createSpan({ cls: "xc-tag xc-tag-weak", text: "🎯 为你强化" });
 		if (q.module) tag.createSpan({ cls: "xc-tag", text: q.module });
 		if (q.point) tag.createSpan({ cls: "xc-tag xc-tag-point", text: q.point });
 		if (q.year) tag.createSpan({ cls: "xc-tag", text: q.year });

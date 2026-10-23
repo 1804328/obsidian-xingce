@@ -485,3 +485,20 @@
 .xc-stats-foot {
 	margin-top: 16px;
 }
+
+/* 智能 / 随机 模式切换 */
+.xc-mode-row {
+	display: flex;
+	gap: 8px;
+	margin: 6px 0 2px;
+}
+.xc-mode-hint {
+	font-size: 0.8em;
+	color: var(--text-muted);
+	margin: 0 0 10px;
+}
+.xc-tag-weak {
+	background: var(--color-orange, #e8743b) !important;
+	color: #fff !important;
+	border-color: transparent !important;
+}

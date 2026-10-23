@@ -14,6 +14,8 @@ export const DEFAULT_DATA: PluginData = {
 		 * 答对一次可能只是蒙对或刚看过解析，连续两次才说明真会了。
 		 */
 		masterStreak: 2,
+		/** 默认开启智能模式：优先推送薄弱模块 */
+		smartMode: true,
 	},
 };
 

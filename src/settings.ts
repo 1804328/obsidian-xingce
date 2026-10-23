@@ -88,6 +88,20 @@ export class XingceSettingTab extends PluginSettingTab {
 			);
 
 		new Setting(containerEl)
+			.setName("智能模式（优先薄弱模块）")
+			.setDesc(
+				"开启后，刷题优先推送你掌握较弱的模块和个人易错题；关闭则均匀随机。可在刷题页随时切换。"
+			)
+			.addToggle((t) =>
+				t
+					.setValue(this.plugin.store.data.settings.smartMode)
+					.onChange(async (v) => {
+						this.plugin.store.data.settings.smartMode = v;
+						await this.plugin.store.save();
+					})
+			);
+
+		new Setting(containerEl)
 			.setName("重建题库索引")
 			.setDesc(
 				this.plugin.bank.size

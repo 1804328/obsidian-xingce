@@ -376,6 +376,38 @@ check(
 	view.contentEl.querySelectorAll(".xc-chip, .xc-btn").length > 0
 );
 
+console.log("\n=== 智能 / 随机 模式切换 ===");
+const modeFind = (kw) =>
+	[...view.contentEl.querySelectorAll(".xc-mode-row .xc-chip")].find((b) =>
+		(b.textContent || "").includes(kw)
+	);
+let smartBtn = modeFind("智能");
+let randBtn = modeFind("随机");
+check("渲染出智能模式按钮", !!smartBtn);
+check("渲染出随机模式按钮", !!randBtn);
+check("默认处于智能模式（按钮高亮）", smartBtn?.classList.contains("is-on") === true);
+check("默认设置 smartMode=true", plugin.store.data.settings.smartMode === true);
+
+// 切到随机模式：setSmart 会触发重渲染，需重新定位按钮节点
+randBtn.click();
+await settle();
+randBtn = modeFind("随机");
+smartBtn = modeFind("智能");
+check("点击随机模式后设置更新", plugin.store.data.settings.smartMode === false);
+check("随机模式按钮高亮", !!randBtn && randBtn.classList.contains("is-on"));
+check(
+	"智能模式按钮取消高亮",
+	!!smartBtn && !smartBtn.classList.contains("is-on")
+);
+
+// 切回智能模式
+smartBtn.click();
+await settle();
+randBtn = modeFind("随机");
+smartBtn = modeFind("智能");
+check("切回智能模式后设置更新", plugin.store.data.settings.smartMode === true);
+check("智能模式按钮恢复高亮", !!smartBtn && smartBtn.classList.contains("is-on"));
+
 console.log("\n=== 随机抽题与判分 ===");
 await view.quickDraw(5);
 // quickDraw 内部调用 async render() 时未 await，这里等事件循环排空再断言

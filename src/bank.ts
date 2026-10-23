@@ -216,17 +216,39 @@ export class Bank {
 		return this.hydrate(picked);
 	}
 
-	/** 按 qid 集合随机抽题（错题本 / 收藏用），同样按单元边界取整 */
-	async pickByQids(qids: string[], n: number): Promise<Question[]> {
+	/**
+	 * 智能加权抽题：weightOf 越大的题目越容易被抽中。
+	 * 配合 buildWeakness 使用——薄弱模块与个人易错题权重更高。
+	 */
+	async drawSmart(
+		f: FilterState,
+		n: number,
+		weightOf: (qid: string) => number
+	): Promise<Question[]> {
+		const pool = this.filter(f);
+		if (!pool.length) return [];
+		return this.hydrate(this.weightedPick(this.units(pool), n, weightOf));
+	}
+
+	/** 按 qid 集合抽题（错题本 / 收藏用），同样按单元边界取整。
+	 *  传入 weightOf 时按权重抽取，否则均匀随机。 */
+	async pickByQids(
+		qids: string[],
+		n: number,
+		weightOf?: (qid: string) => number
+	): Promise<Question[]> {
 		const set = new Set(qids);
 		const pool = this.entries.filter((e) => set.has(e.qid));
 		if (!pool.length) return [];
-		const picked: IndexEntry[] = [];
-		for (const u of shuffle(this.units(pool))) {
-			picked.push(...u.questions);
-			if (picked.length >= n) break;
+		if (!weightOf) {
+			const picked: IndexEntry[] = [];
+			for (const u of shuffle(this.units(pool))) {
+				picked.push(...u.questions);
+				if (picked.length >= n) break;
+			}
+			return this.hydrate(picked);
 		}
-		return this.hydrate(picked);
+		return this.hydrate(this.weightedPick(this.units(pool), n, weightOf));
 	}
 
 	/** 按试卷名取整套（模考用），按模块与题号排序 */
@@ -284,6 +306,36 @@ export class Bank {
 		entries.forEach((e, i) => order.set(e.uid, i));
 		out.sort((a, b) => (order.get(a.uid) ?? 0) - (order.get(b.uid) ?? 0));
 		return out;
+	}
+
+	/** 按单元加权随机抽取：每轮按权重选一个单元，凑够 n 题为止 */
+	private weightedPick(
+		units: DrawUnit[],
+		n: number,
+		weightOf: (qid: string) => number
+	): IndexEntry[] {
+		const weighted = units.map((u) => ({
+			u,
+			w:
+				u.questions.reduce(
+					(s, e) => s + Math.max(0.01, weightOf(e.qid)),
+					0
+				) / u.questions.length,
+		}));
+		const picked: IndexEntry[] = [];
+		const avail = [...weighted];
+		while (avail.length && picked.length < n) {
+			const total = avail.reduce((s, x) => s + x.w, 0);
+			let r = Math.random() * total;
+			let idx = 0;
+			for (; idx < avail.length; idx++) {
+				r -= avail[idx].w;
+				if (r <= 0) break;
+			}
+			if (idx >= avail.length) idx = avail.length - 1;
+			picked.push(...avail.splice(idx, 1)[0].u.questions);
+		}
+		return picked;
 	}
 
 	facets() {

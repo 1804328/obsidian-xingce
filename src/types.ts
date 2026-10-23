@@ -80,5 +80,7 @@ export interface PluginData {
 		 * 0 表示永不自动移除，只能手动删除。
 		 */
 		masterStreak: number;
+		/** 智能模式：抽题优先推送薄弱模块与个人易错题；关闭则均匀随机 */
+		smartMode: boolean;
 	};
 }

@@ -399,19 +399,38 @@ for (const P of [HTMLElement.prototype, DocumentFragment.prototype]) {
   } catch (e) { drawDiag = "ERR " + e.message; }
 
   if (VIEW_TYPE === "xingce-practice-view") {
-    await view.quickDraw(3);
-    // quickDraw 内部不 await 异步 render，这里轮询等 DOM 出现
-    for (let i = 0; i < 50; i++) {
-      if (host.querySelector(".xc-option")) break;
-      await wait(200);
+    if (process.env.XC_SETUP === "1") {
+      // 仅渲染筛选 / 设置界面（含智能 / 随机模式切换），不进入答题态
+      await wait(600);
+    } else {
+      await view.quickDraw(3);
+      // quickDraw 内部不 await 异步 render，这里轮询等 DOM 出现
+      for (let i = 0; i < 50; i++) {
+        if (host.querySelector(".xc-option")) break;
+        await wait(200);
+      }
+      const q = view.session && view.session.questions[view.session.idx];
+      // 先尝试真实点击答题（单选题点选项即判分，多选题需再点提交）
+      const opt = host.querySelector(".xc-option");
+      if (opt) opt.click();
+      await wait(400);
+      const sub = host.querySelector(".xc-submit-bar .xc-btn-primary");
+      if (sub && !sub.disabled) sub.click();
+      await wait(400);
+      // 兜底：harness 场景下若点击未触发判分反馈，直接驱动内部判分
+      if (!host.querySelector(".xc-verdict") && q && typeof view.commit === "function") {
+        const wrongOpt = q.options.find(
+          (o) => !(q.correctKeys || []).includes(o.key)
+        );
+        view.commit(q, wrongOpt ? [wrongOpt.key] : ["X"]);
+        await view.render();
+      }
+      // 轮询等待判分反馈渲染完成，确保截图包含解析
+      for (let i = 0; i < 30; i++) {
+        if (host.querySelector(".xc-verdict")) break;
+        await wait(200);
+      }
     }
-    // 点第一个选项触发判分（多选题需再点提交）
-    const opt = host.querySelector(".xc-option");
-    if (opt) opt.click();
-    await wait(300);
-    const sub = host.querySelector(".xc-submit");
-    if (sub && !sub.disabled) sub.click();
-    await wait(500);
   } else {
     await wait(600);
   }

@@ -55,6 +55,7 @@ await writeFile(
 	entry,
 	[
 		'export { Bank } from "../src/bank";',
+		'export { buildWeakness } from "../src/weakness";',
 		'export { TFile } from "obsidian";',
 		"",
 	].join("\n")
@@ -70,7 +71,7 @@ await esbuild.build({
 	outfile: bundle,
 });
 
-const { Bank, TFile } = await import(pathToFileURL(bundle).href);
+const { Bank, TFile, buildWeakness } = await import(pathToFileURL(bundle).href);
 
 const paths = await walk(root);
 const contents = new Map();
@@ -223,6 +224,51 @@ if (exams.length) {
 	check(`整套可抽出（${e0.exam}）`, qs.length > 0, `got ${qs.length}`);
 	console.log(`  INFO  该卷 ${qs.length} 题，覆盖模块：${[...new Set(qs.map((q) => q.module))].join("、")}`);
 }
+
+console.log("\n=== 薄弱度算法（buildWeakness） ===");
+const mkE = (qid, module) => ({ qid, module });
+const mkHist = (qid, correct) => ({ qid, correct, at: 0 });
+const mockEntries = [
+	mkE("a1", "A"), mkE("a2", "A"), mkE("a3", "A"),
+	mkE("b1", "B"), mkE("b2", "B"), mkE("b3", "B"),
+];
+
+// 1. 无历史
+let w = buildWeakness(mockEntries, []);
+check("无历史：weightOf 恒为 1", w.weightOf("a1") === 1 && w.weightOf("b1") === 1);
+check("无历史：hasData=false", w.hasData === false);
+
+// 2. 关闭智能
+w = buildWeakness(mockEntries, [mkHist("a1", false)], { smart: false });
+check("关闭智能：weightOf 恒为 1", w.weightOf("a1") === 1 && w.weightOf("b1") === 1);
+
+// 3. A 全错 / B 全对
+const hist = [
+	mkHist("a1", false), mkHist("a2", false), mkHist("a3", false),
+	mkHist("b1", true), mkHist("b2", true), mkHist("b3", true),
+];
+w = buildWeakness(mockEntries, hist);
+check("A（全错）权重高于 B（全对）", w.weightOf("a1") > w.weightOf("b1"), `A=${w.weightOf("a1")} B=${w.weightOf("b1")}`);
+check("B（全对）权重为基准 1", w.weightOf("b1") === 1);
+check("最弱模块识别为 A", w.weakModules[0] === "A", `got ${w.weakModules.join(",")}`);
+check("hasData=true", w.hasData === true);
+
+// 4. 样本不足不进 weakModules
+w = buildWeakness(mockEntries, [mkHist("a1", false)]);
+check("样本不足（<3）不进 weakModules", !w.weakModules.includes("A"));
+
+// 5. 个人错次加成：同一模块内错 5 次权重高于错 1 次
+const hist2 = [
+	...Array.from({ length: 5 }, () => mkHist("a1", false)),
+	mkHist("a2", false),
+];
+w = buildWeakness(mockEntries, hist2);
+check("个人错更多 → 权重更高", w.weightOf("a1") > w.weightOf("a2"), `a1=${w.weightOf("a1")} a2=${w.weightOf("a2")}`);
+
+// 6. 上限保护
+const hist3 = Array.from({ length: 100 }, () => mkHist("a1", false));
+w = buildWeakness(mockEntries, hist3);
+check("权重不超过上限", w.weightOf("a1") <= 8, `got ${w.weightOf("a1")}`);
 
 await rm(bundle, { force: true });
 await rm(stub, { force: true });
